@@ -1,0 +1,18 @@
+version: 2
+
+sources:
+  - name: backend
+    schema: backend
+    description: "Raw data sources loaded from GCS (semi-structured JSON per booking)."
+    tables:
+      - name: bookings
+        description: >
+          Table containing one row per booking, with full JSON data stored in `raw_json`.
+        columns:
+          - name: bookingid
+            description: "Unique booking identifier from the source export."
+            tests: [unique, not_null]
+          - name: raw_json
+            description: "Nested JSON containing all booking, segment, passenger, and ticket data."
+          - name: uploaded_at
+            description: "Timestamp when the booking record was ingested into BigQuery."

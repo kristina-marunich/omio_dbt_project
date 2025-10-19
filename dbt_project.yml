@@ -1,0 +1,53 @@
+name: omio_dbt_project              # ✅ REQUIRED — project name
+version: 1.0.0
+config-version: 2
+
+profile: omio_dbt_project           # or whatever your dbt Cloud profile is called
+
+model-paths: ["models"]
+analysis-paths: ["analysis"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+target-path: "target"
+clean-targets: ["target", "dbt_packages"]
+
+# ────────────────────────────────
+#  SCHEMA CONFIGURATION BY LAYER
+# ────────────────────────────────
+models:
+  omio_dbt_project:
+
+    # BASE layer – raw ingestion / JSON read
+    staging:
+      backend:
+        base:
+          +schema: base
+          +materialized: view
+          +tags: ['base']
+
+    # STAGING layer – flattening and cleaning
+    staging:
+      backend:
+        +schema: staging
+        +materialized: view
+        +tags: ['staging']
+
+    # INTERMEDIATE layer – joining and aggregating
+    intermediate:
+      +schema: intermediate
+      +materialized: table
+      +tags: ['intermediate']
+
+    # CORE layer – facts & dimensions
+    marts:
+      core:
+        +schema: core
+        +materialized: table
+        +tags: ['core']
+      reporting:
+        +schema: reporting
+        +materialized: table
+        +tags: ['reporting']
