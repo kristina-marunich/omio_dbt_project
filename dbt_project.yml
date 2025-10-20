@@ -1,8 +1,8 @@
-name: omio_dbt_project              # ✅ REQUIRED — project name
+name: omio_dbt_project              
 version: 1.0.0
 config-version: 2
 
-profile: omio_dbt_project           # or whatever your dbt Cloud profile is called
+profile: omio_dbt_project           
 
 model-paths: ["models"]
 analysis-paths: ["analysis"]
@@ -43,11 +43,12 @@ models:
 
     # CORE layer – facts & dimensions
     marts:
-      core:
-        +schema: core
-        +materialized: table
-        +tags: ['core']
-      reporting:
-        +schema: reporting
-        +materialized: table
-        +tags: ['reporting']
+      backend:
+        core:
+          +schema: core
+          +materialized: table
+          +tags: ['core']
+        reporting:
+          +schema: reporting
+          +materialized: table
+          +tags: ['reporting']
