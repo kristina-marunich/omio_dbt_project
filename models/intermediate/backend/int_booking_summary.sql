@@ -1,4 +1,13 @@
 -- models/intermediate/backend/int_booking_summary.sql
+-- Aggregate booking-level metrics from tickets and passengers
+
+{{ config(
+    materialized='incremental',
+    unique_key='booking_id',
+    incremental_strategy='insert_overwrite',
+    partition_by={'field': 'uploaded_at_timestamp', 'data_type': 'timestamp'},
+    on_schema_change='sync'
+) }}
 
 with
 bookings as (
@@ -10,6 +19,9 @@ bookings as (
         partner_id,
         uploaded_at_timestamp
     from {{ ref('stg_backend__booking') }}
+    {% if is_incremental() %}
+        where uploaded_at_timestamp >= timestamp_sub(current_timestamp(), interval 7 day)
+    {% endif %}
 ),
 
 tickets_agg as (

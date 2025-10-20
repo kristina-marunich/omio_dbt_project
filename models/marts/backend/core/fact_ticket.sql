@@ -3,15 +3,12 @@
 select
     ticket_id,
     booking_id,
-    segment_id,
-    passenger_id,
     ticket_price,
     ticket_currency,
     vendor_code,
-    carrier_name,
-    travel_mode,
-    departure_time_timestamp,
-    arrival_time_timestamp,
-    passenger_type,
+    num_segments,
+    num_passengers,
+    eur_rate,
+    ticket_price_eur,
     uploaded_at_timestamp
-from {{ ref('int_ticket_details') }}
+from {{ ref('int_ticket_summary') }}
