@@ -8,4 +8,4 @@ SELECT
     arrival_time_timestamp,
     travel_mode
 
-FROM {{ ref('stg_backend__segment') }}
+FROM {{ ref('stg_backend__segment') }} s 

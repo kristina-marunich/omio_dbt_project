@@ -25,14 +25,14 @@ models:
       backend:
         base:
           +schema: base
-          +materialized: view
+          +materialized: table
           +tags: ['base']
 
     # STAGING layer – flattening and cleaning
     staging:
       backend:
         +schema: staging
-        +materialized: view
+        +materialized: tanle
         +tags: ['staging']
 
     # INTERMEDIATE layer – joining and aggregating

@@ -57,7 +57,7 @@ models:
       - name: passenger_id
         description: "Unique passenger identifier."
         tests: [unique, not_null]
-      - name: bookingid
+      - name: booking_id
         description: "Parent booking reference."
         tests:
           - relationships:
@@ -74,10 +74,10 @@ models:
   - name: stg_backend__ticket
     description: "Ticket-level data (each ticket purchased within a booking)."
     columns:
-      - name: ticketid
+      - name: ticket_id
         description: "Unique ticket identifier."
         tests: [unique, not_null]
-      - name: bookingid
+      - name: booking_id
         description: "Parent booking reference."
         tests:
           - relationships:
@@ -98,19 +98,19 @@ models:
   - name: stg_backend__ticket_segment
     description: "Join table linking tickets to their corresponding travel segments."
     columns:
-      - name: ticketid
+      - name: ticket_id
         description: "Ticket identifier."
         tests:
           - relationships:
               to: ref('stg_backend__ticket')
               field: ticket_id
-      - name: segmentid
+      - name: segment_id
         description: "Segment identifier."
         tests:
           - relationships:
               to: ref('stg_backend__segment')
               field: segment_id
-      - name: bookingid
+      - name: booking_id
         description: "Parent booking reference."
       - name: uploaded_at
         description: "Ingestion timestamp."
@@ -121,19 +121,19 @@ models:
   - name: stg_backend__ticket_passenger
     description: "Join table mapping tickets to passengers (receipt-level linkage)."
     columns:
-      - name: ticketid
+      - name: ticket_id
         description: "Ticket identifier."
         tests:
           - relationships:
               to: ref('stg_backend__ticket')
-              field: ticketid
+              field: ticket_id
       - name: passenger_id
         description: "Passenger identifier."
         tests:
           - relationships:
               to: ref('stg_backend__passenger')
               field: passenger_id
-      - name: bookingid
+      - name: booking_id
         description: "Parent booking reference."
       - name: uploaded_at
         description: "Ingestion timestamp."

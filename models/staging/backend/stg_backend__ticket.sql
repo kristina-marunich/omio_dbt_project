@@ -1,12 +1,24 @@
 -- stg_backend__ticket.sql
 -- Flatten tickets array
+
+{{ config(
+    materialized='incremental',
+    unique_key=['booking_id', 'ticket_id'],
+    incremental_strategy='insert_overwrite',
+    partition_by={'field': 'uploaded_at_timestamp', 'data_type': 'timestamp'},
+    on_schema_change='sync'
+) }}
+
 with source as (
     select
         bookingid as booking_id,
         uploaded_at,
         ticket
-    from {{ ref('base_backend__booking') }},
-         unnest(json_extract_array(raw_json, '$.tickets')) as ticket
+    from {{ ref('base_backend__booking') }}
+        cross join unnest(json_extract_array(raw_json, '$.tickets')) as ticket
+    {% if is_incremental() %}
+        where uploaded_at >= timestamp_sub(current_timestamp(), interval 7 day)
+    {% endif %}
 )
 select
     cast(booking_id as string) as booking_id,
