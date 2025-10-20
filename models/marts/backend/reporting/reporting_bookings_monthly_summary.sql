@@ -1,77 +1,97 @@
--- models/marts/backend/reporting_bookings_monthly_summary.sql
--- Goal: Calculate monthly uniques and averages using only Core and Intermediate models.
--- models/marts/backend/reporting/rep_monthly_summary.sql
--- Goal: Calculate monthly uniques and averages using only Core and Intermediate models.
--- CTE to aggregate unique passengers and segments to the monthly level
--- This relies on the created_at timestamp being correctly included in the
--- Intermediate Link Tables.
+-- rpt_monthly_booking_activity.sql
+-- Purpose: Monthly aggregated KPIs from core fact tables (bookings, tickets, passengers, segments).
+
 with
-    monthly_uniques as (
-        select
-            date_trunc(booking_created_at_timestamp, month) as reporting_month,  -- BigQuery uses DATE_TRUNC(date_expression, date_part)
-            count(distinct passenger_id) as total_unique_passengers,
-            null as total_unique_segments  -- Placeholder for UNION
-        from {{ ref("int_ticket_passenger_links") }}
-        group by 1
+-- 1️⃣ Base: Define month from booking creation date
+booking_base as (
+    select
+        date_trunc(date(created_at), month) as month,
+        booking_id,
+        total_booking_price,
+        total_tickets,
+        total_passengers
+    from {{ ref('fact_booking') }}
+),
 
-        union all
+-- 2️⃣ Aggregate booking-level metrics
+booking_metrics as (
+    select
+        month,
+        count(distinct booking_id) as total_bookings,
+        sum(total_booking_price) as total_revenue,
+        sum(total_tickets) as total_tickets,
+        sum(total_passengers) as total_passengers,
+        avg(total_tickets) as avg_tickets_per_booking,
+        avg(total_passengers) as avg_passengers_per_booking,
+        safe_divide(sum(total_booking_price), count(distinct booking_id)) as avg_booking_value
+    from booking_base
+    group by month
+),
 
-        select
-            date_trunc(booking_created_at_timestamp, month) as reporting_month,
-            null as total_unique_passengers,  -- Placeholder for UNION
-            count(distinct segment_id) as total_unique_segments
-        from {{ ref("int_ticket_segment_links") }}
-        group by 1
-    ),
+-- 3️⃣ Aggregate ticket-level metrics
+-- 3️⃣ Aggregate ticket-level metrics
+ticket_metrics as (
+    select
+        date_trunc(date(b.created_at), month) as month,
+        count(distinct t.ticket_id) as total_tickets_unique,
+        avg(t.ticket_price) as avg_ticket_price
+    from {{ ref('fact_ticket') }} t
+    join {{ ref('fact_booking') }} b using (booking_id)
+    group by 1
+),
 
-    -- Pivot the unique counts from rows to columns
-    pivoted_uniques as (
-        select
-            reporting_month,
-            -- We now SUM the pivoted rows, grouping by month
-            sum(total_unique_passengers) as total_unique_passengers,
-            sum(total_unique_segments) as total_unique_segments
-        from monthly_uniques
-        group by 1
-    ),
+-- 4️⃣ Distinct passengers per month
+passenger_metrics as (
+    select
+        date_trunc(date(b.created_at), month) as month,
+        count(distinct p.passenger_id) as unique_passengers
+    from {{ ref('fact_booking') }} b
+    join {{ ref('fact_ticket') }} t using (booking_id)
+    join {{ ref('dim_passenger') }} p using (passenger_id)
+    group by 1
+),
 
-    -- Aggregate measures from the central fact table
-    monthly_facts as (
-        select
-            date_trunc(created_at_timestamp, month) as reporting_month,
-            count(booking_id) as total_bookings_made,
-            sum(total_booking_price_eur) as total_revenue_eur,
-            sum(num_segments) as total_segments_count,
-            sum(num_passengers) as total_passengers_count
-        from {{ ref("fact_booking") }}
-        group by 1
-    )
+-- 5️⃣ Distinct segments per month
+segment_metrics as (
+    select
+        date_trunc(date(b.created_at), month) as month,
+        count(distinct s.segment_id) as unique_segments
+    from {{ ref('fact_booking') }} b
+    join {{ ref('fact_ticket') }} t using (booking_id)
+    join {{ ref('dim_segment') }} s using (segment_id)
+    group by 1
+),
 
+-- 6️⃣ Derived metrics based on ratios
+ratios as (
+    select
+        b.month,
+        safe_divide(b.total_bookings, p.unique_passengers) as avg_bookings_per_passenger,
+        safe_divide(s.unique_segments, b.total_bookings) as avg_segments_per_booking
+    from booking_metrics b
+    left join passenger_metrics p using (month)
+    left join segment_metrics s using (month)
+)
+
+-- 7️⃣ Final combined output
 select
-    f.reporting_month,
-
-    -- Basic Aggregated Measures
-    f.total_bookings_made,
-    f.total_revenue_eur,
-
-    -- Unique Entity Counts (from 'pivoted_uniques' CTE)
-    u.total_unique_passengers,
-    u.total_unique_segments,
-
-    -- Derived Metrics (Ratios)
-    safe_divide(
-        f.total_bookings_made, u.total_unique_passengers
-    ) as avg_bookings_per_unique_passenger,
-    safe_divide(
-        f.total_segments_count, f.total_bookings_made
-    ) as avg_segments_per_booking_monthly,
-    safe_divide(
-        f.total_revenue_eur, f.total_bookings_made
-    ) as average_booking_value_eur,
-    safe_divide(
-        f.total_passengers_count, f.total_bookings_made
-    ) as average_passengers_per_booking
-
-from monthly_facts as f
-inner join pivoted_uniques as u on f.reporting_month = u.reporting_month
-order by f.reporting_month
+    b.month,
+    b.total_bookings,
+    b.total_revenue,
+    b.total_tickets,
+    b.total_passengers,
+    b.avg_booking_value,
+    b.avg_tickets_per_booking,
+    b.avg_passengers_per_booking,
+    t.total_tickets_unique,
+    t.avg_ticket_price,
+    p.unique_passengers,
+    s.unique_segments,
+    r.avg_bookings_per_passenger,
+    r.avg_segments_per_booking
+from booking_metrics b
+left join ticket_metrics t using (month)
+left join passenger_metrics p using (month)
+left join segment_metrics s using (month)
+left join ratios r using (month)
+order by b.month

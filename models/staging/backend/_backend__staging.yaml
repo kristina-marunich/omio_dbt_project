@@ -36,7 +36,7 @@ models:
         tests:
           - relationships:
               to: ref('stg_backend__booking')
-              field: bookingid
+              field: booking_id
       - name: carrier_name
         description: "Carrier or operator for this travel segment."
       - name: departure_time_timestamp
@@ -62,7 +62,7 @@ models:
         tests:
           - relationships:
               to: ref('stg_backend__booking')
-              field: bookingid
+              field: booking_id
       - name: type
         description: "Passenger type (adult, child, infant)."
       - name: uploaded_at
@@ -82,7 +82,7 @@ models:
         tests:
           - relationships:
               to: ref('stg_backend__booking')
-              field: bookingid
+              field: booking_id
       - name: booking_price
         description: "Price paid for the ticket."
       - name: booking_currency
@@ -103,7 +103,7 @@ models:
         tests:
           - relationships:
               to: ref('stg_backend__ticket')
-              field: ticketid
+              field: ticket_id
       - name: segmentid
         description: "Segment identifier."
         tests:
