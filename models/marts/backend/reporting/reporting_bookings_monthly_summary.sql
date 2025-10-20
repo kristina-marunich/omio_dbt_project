@@ -2,7 +2,7 @@
     materialized = 'table'
 ) }}
 
--- Base booking-level info
+
 with booking_base as (
     select
         date_trunc(date(created_at_timestamp), month) as month,
@@ -13,7 +13,7 @@ with booking_base as (
     from {{ ref('int_booking_summary') }}
 ),
 
--- Booking-level monthly metrics
+
 booking_metrics as (
     select
         month,
@@ -28,40 +28,37 @@ booking_metrics as (
     group by month
 ),
 
--- Ticket-level metrics (converted to EUR)
+
 ticket_metrics as (
     select
-        date_trunc(date(t.uploaded_at_timestamp), month) as month,
-        count(distinct t.ticket_id) as total_tickets_unique,
-        avg(t.ticket_price_eur) as avg_ticket_price_eur,
-        sum(t.ticket_price_eur) as total_revenue_eur
-    from {{ ref('int_ticket_summary') }} t
+        date_trunc(date(uploaded_at_timestamp), month) as month,
+        count(distinct ticket_id) as total_tickets_unique,
+        avg(ticket_price_eur) as avg_ticket_price_eur,
+        sum(ticket_price_eur) as total_revenue_eur
+    from {{ ref('int_ticket_summary') }}
     group by 1
 ),
 
--- Passenger-level metrics (distinct passengers per month)
 passenger_metrics as (
     select
-        date_trunc(date(b.created_at_timestamp), month) as month,
-        count(distinct bp.passenger_id) as unique_passengers
-    from {{ ref('stg_backend__booking') }} b
-    join {{ ref('stg_backend__ticket') }} t using (booking_id)
-    join {{ ref('stg_backend__ticket_passenger') }} bp using (booking_id, ticket_id)
+        date_trunc(date(uploaded_at_timestamp), month) as month,
+        count(distinct passenger_id) as unique_passengers
+    from {{ ref('int_booking_ticket_segment_passenger') }}
+    where passenger_id is not null
     group by 1
 ),
 
--- Segment-level metrics (distinct segments per month)
+
 segment_metrics as (
     select
-        date_trunc(date(b.created_at_timestamp), month) as month,
-        count(distinct ts.segment_id) as unique_segments
-    from {{ ref('stg_backend__booking') }} b
-    join {{ ref('stg_backend__ticket') }} t using (booking_id)
-    join {{ ref('stg_backend__ticket_segment') }} ts using (booking_id, ticket_id)
+        date_trunc(date(uploaded_at_timestamp), month) as month,
+        count(distinct segment_id) as unique_segments
+    from {{ ref('int_booking_ticket_segment_passenger') }}
+    where segment_id is not null
     group by 1
 ),
 
--- Derived ratio-based KPIs
+
 ratios as (
     select
         b.month,
@@ -72,7 +69,7 @@ ratios as (
     left join segment_metrics s using (month)
 )
 
--- Final output
+
 select
     b.month,
     b.total_bookings,
