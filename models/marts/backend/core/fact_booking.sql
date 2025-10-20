@@ -2,8 +2,8 @@
 
 select
     booking_id,
-    created_at_timestamp as created_at,
-    updated_at_timestamp as updated_at,
+    created_at_timestamp,
+    updated_at_timestamp,
     partner_id,
     user_selected_currency as booking_currency,
     total_booking_price,

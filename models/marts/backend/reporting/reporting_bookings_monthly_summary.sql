@@ -1,41 +1,34 @@
-{{ config(
-    materialized = 'table'
-) }}
-
-
 with booking_base as (
     select
         date_trunc(date(created_at_timestamp), month) as month,
         booking_id,
-        total_booking_price,
+        total_booking_price, 
         total_tickets,
         total_passengers
-    from {{ ref('int_booking_summary') }}
+    from {{ ref('fact_booking') }}
 ),
-
 
 booking_metrics as (
     select
         month,
         count(distinct booking_id) as total_bookings,
-        sum(total_booking_price) as total_revenue,
+        sum(total_booking_price) as total_revenue_eur,
         sum(total_tickets) as total_tickets,
         sum(total_passengers) as total_passengers,
         avg(total_tickets) as avg_tickets_per_booking,
         avg(total_passengers) as avg_passengers_per_booking,
-        safe_divide(sum(total_booking_price), count(distinct booking_id)) as avg_booking_value
+        safe_divide(sum(total_booking_price), count(distinct booking_id)) as avg_booking_value_eur
     from booking_base
     group by month
 ),
-
 
 ticket_metrics as (
     select
         date_trunc(date(uploaded_at_timestamp), month) as month,
         count(distinct ticket_id) as total_tickets_unique,
         avg(ticket_price_eur) as avg_ticket_price_eur,
-        sum(ticket_price_eur) as total_revenue_eur
-    from {{ ref('int_ticket_summary') }}
+        sum(ticket_price_eur) as total_ticket_revenue_eur
+    from {{ ref('fact_ticket') }}
     group by 1
 ),
 
@@ -58,7 +51,6 @@ segment_metrics as (
     group by 1
 ),
 
-
 ratios as (
     select
         b.month,
@@ -69,19 +61,18 @@ ratios as (
     left join segment_metrics s using (month)
 )
 
-
 select
     b.month,
     b.total_bookings,
-    b.total_revenue,
+    b.total_revenue_eur,
     b.total_tickets,
     b.total_passengers,
-    b.avg_booking_value,
+    b.avg_booking_value_eur,
     b.avg_tickets_per_booking,
     b.avg_passengers_per_booking,
     t.total_tickets_unique,
     t.avg_ticket_price_eur,
-    t.total_revenue_eur,
+    t.total_ticket_revenue_eur,
     p.unique_passengers,
     s.unique_segments,
     r.avg_bookings_per_passenger,
