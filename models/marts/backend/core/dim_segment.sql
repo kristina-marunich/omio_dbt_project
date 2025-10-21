@@ -1,11 +1,8 @@
 -- dim_segment.sql
 
 SELECT
-    distinct
-    segment_id, -- PK 
-    carrier_name ,
-    departure_time_timestamp,
-    arrival_time_timestamp,
-    travel_mode
-
-FROM {{ ref('stg_backend__segment') }} s 
+    segment_id, -- PK: Master Segment ID
+    carrier_name,
+    travel_mode,
+    earliest_departure_time
+FROM {{ ref('int_segment_master_attributes') }}

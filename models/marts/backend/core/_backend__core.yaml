@@ -1,0 +1,119 @@
+version: 2
+
+models:
+  # ----------------------------------------------------
+  # DIMENSIONS
+  # ----------------------------------------------------
+  - name: dim_booking
+    description: "Dimension table for booking attributes (transaction header). One row per Booking."
+    config: {materialized: table}
+    columns:
+      - name: booking_id
+        description: "PK: Unique ID for the Booking."
+        tests: [unique, not_null]
+      - name: partner_id
+        description: "External partner ID."
+      - name: user_selected_currency
+        description: "User-selected currency."
+      - name: booking_created_date_id
+        description: "FK: Links to dim_date."
+        tests:
+          - relationships:
+              to: ref('dim_date')
+              field: date_id
+
+  - name: dim_passenger
+    description: "Master Dimension for the Person. One row per unique, persistent Passenger ID."
+    config: {materialized: table}
+    columns:
+      - name: passenger_id
+        description: "PK: Master ID for the person."
+        tests: [unique, not_null]
+      - name: passenger_type
+        description: "The canonical passenger type."
+
+  - name: dim_segment
+    description: "Master Dimension for the Route/Product. One row per unique, persistent Segment ID."
+    config: {materialized: table}
+    columns:
+      - name: segment_id
+        description: "PK: Master ID for the route/product."
+        tests: [unique, not_null]
+      - name: carrier_name
+        description: "Carrier or operator name."
+      - name: travel_mode
+        description: "Type of transportation."
+
+  - name: dim_date
+    description: "Conformed Date Dimension (Generated)."
+    config: {materialized: table}
+    columns:
+      - name: date_id
+        description: "PK: Date ID (YYYYMMDD)."
+        tests: [unique, not_null]
+      - name: year_month_id
+        description: "Month ID (YYYYMM) for simple grouping."
+
+  # ----------------------------------------------------
+  # FACT
+  # ----------------------------------------------------
+  - name: fact_ticket_transaction
+    description: "Central Fact table. Grain: One row per Ticket. Contains price and core FKs."
+    config: {materialized: table}
+    columns:
+      - name: ticket_id
+        description: "PK: Unique ID of the ticket (Fact Grain)."
+        tests: [unique, not_null]
+      - name: booking_id
+        description: "FK: Links to dim_booking."
+        tests:
+          - relationships:
+              to: ref('dim_booking')
+              field: booking_id
+      - name: ticket_issue_date_id
+        description: "FK: Links to dim_date."
+        tests:
+          - relationships:
+              to: ref('dim_date')
+              field: date_id
+      - name: ticket_price_eur
+        description: "Core Measure: Price normalized to EUR."
+      - name: booking_currency
+        description: "Original currency of payment."
+
+  # ----------------------------------------------------
+  # BRIDGE TABLES (M:M Resolution)
+  # ----------------------------------------------------
+  - name: bridge_ticket_passenger
+    description: "M:M Bridge. Links Fact (Ticket) to Master Dimension (Passenger)."
+    config: {materialized: table}
+    columns:
+      - name: ticket_id
+        description: "FK: Links to fact_ticket_transaction."
+        tests:
+          - relationships:
+              to: ref('fact_ticket_transaction')
+              field: ticket_id
+      - name: passenger_id
+        description: "FK: Links to dim_passenger."
+        tests:
+          - relationships:
+              to: ref('dim_passenger')
+              field: passenger_id
+          - dbt_utils.unique_combination_of_columns:
+              combination_of_columns: [ticket_id, passenger_id]
+
+  - name: bridge_ticket_segment
+    description: "M:M Bridge. Links Fact (Ticket) to Master Dimension (Segment)."
+    config: {materialized: table}
+    columns:
+      - name: ticket_id
+        description: "FK: Links to fact_ticket_transaction."
+      - name: segment_id
+        description: "FK: Links to dim_segment."
+        tests:
+          - relationships:
+              to: ref('dim_segment')
+              field: segment_id
+          - dbt_utils.unique_combination_of_columns:
+              combination_of_columns: [ticket_id, segment_id]

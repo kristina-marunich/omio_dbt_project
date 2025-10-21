@@ -32,13 +32,13 @@ models:
     staging:
       backend:
         +schema: staging
-        +materialized: tanle
+        +materialized: view
         +tags: ['staging']
 
     # INTERMEDIATE layer – joining and aggregating
     intermediate:
       +schema: intermediate
-      +materialized: table
+      +materialized: view
       +tags: ['intermediate']
 
     # CORE layer – facts & dimensions
