@@ -1,7 +1,6 @@
 -- dim_passenger.sql
 
 SELECT
-    distinct 
-    passenger_id, -- PK
+    passenger_id, -- PK: Master Passenger ID
     passenger_type
-FROM {{ ref('stg_backend__passenger') }}
+FROM {{ ref('int_passenger_master_attributes') }}
