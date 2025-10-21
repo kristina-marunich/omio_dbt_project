@@ -1,0 +1,48 @@
+version: 2
+
+models:
+  - name: int_passenger_master_attributes
+    description: "Derives the canonical, unique record for each Master Passenger ID (Person)."
+    columns:
+      - name: passenger_id
+        description: "PK: Unique Master ID for the person."
+        tests: [unique, not_null]
+      - name: passenger_type
+        description: "The primary passenger type associated with the Master ID."
+
+  - name: int_segment_master_attributes
+    description: "Derives the canonical, unique record for each Master Segment ID (Route/Product)."
+    columns:
+      - name: segment_id
+        description: "PK: Unique Master ID for the segment/route."
+        tests: [unique, not_null]
+      - name: carrier_name
+        description: "The primary carrier/operator name."
+      - name: travel_mode
+        description: "The primary mode of transportation."
+      - name: earliest_departure_time
+        description: "The earliest observed departure time for this segment ID."
+
+  - name: int_ticket_base
+    description: "Pre-Fact layer: Combines ticket facts with booking context and performs EUR currency conversion."
+    columns:
+      - name: ticket_id
+        description: "PK: Unique ID of the ticket (Fact grain)."
+        tests: [unique, not_null]
+      - name: booking_id
+        description: "FK: Links to dim_booking."
+        tests: [not_null]
+      - name: ticket_issue_date_id
+        description: "FK: Links to dim_date based on booking creation timestamp."
+        tests:
+          - relationships:
+              to: ref('dim_date')
+              field: date_id
+      - name: ticket_price
+        description: "Original price paid for the ticket."
+      - name: booking_currency
+        description: "Original currency of the price."
+      - name: eur_rate
+        description: "The exchange rate used (Original Currency to EUR) on the transaction date."
+      - name: ticket_price_eur
+        description: "Core Measure: Ticket price normalized to Euros (EUR)."
