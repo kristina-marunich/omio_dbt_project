@@ -25,7 +25,7 @@ models:
       backend:
         base:
           +schema: base
-          +materialized: table
+          +materialized: view
           +tags: ['base']
 
     # STAGING layer – flattening and cleaning

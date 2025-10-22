@@ -8,6 +8,7 @@ with
             t.ticket_currency,
 
             date(b.created_at_timestamp) as transaction_date,
+            b.uploaded_at_timestamp,
 
             cast(
                 format_date('%Y%m%d', date(b.created_at_timestamp)) as int
@@ -25,7 +26,7 @@ select
     tb.ticket_id, --PK
     tb.booking_id, -- FK
     tb.ticket_issue_date_id,
-
+    tb.uploaded_at_timestamp,
     tb.ticket_price,
     tb.ticket_currency,
 
