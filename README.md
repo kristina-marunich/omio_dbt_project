@@ -53,9 +53,6 @@ We would implement snapshots on the `stg_backend___booking` model, targeting the
 
 ---
 
-## 3. Data Quality (DQ) and Governance
-
-Data quality is enforced at every step to build trust.
 
 ## 3. Data Quality (DQ) Enforcement
 
@@ -103,12 +100,38 @@ Anomalies caused by external factors require sophisticated time-aware comparison
 
 The pipeline is scheduled daily and built to be resilient, using the "Test and then Build" methodology.
 
-### Airflow DAG Logic & Dependencies
+## 4. Pipeline Orchestration Walkthrough (Airflow)
 
-1.  Ingest $\rightarrow$ Run Staging/Intermediate: Loads the newest raw data and runs the initial, inexpensive transformations.
-2.  Run Tests: Executes `dbt test` across the whole project.
-3.  Run Production: The `run_marts` task is set with `trigger_rule='all_success'`. If the tests fail, the production build is BLOCKED.
-4.  Failure Logic: Retry logic (3 retries with backoff) handles transient errors, and a failure alert is sent immediately to the engineering team if any test or task fails.
+This section explains the provided Airflow DAG, which orchestrates the daily process of transforming raw booking data into final reporting marts.
+
+### Orchestration Context
+
+This DAG is configured to work specifically with **dbt Cloud**, utilizing the `DbtCloudRunJobOperator`. This approach is common in production because dbt Cloud handles the compute and environment management, letting Airflow focus purely on scheduling and dependency management.
+
+**Note:** This DAG file is included here as an example of my approach. In a true production environment, the Airflow DAG files would reside in a **separate, dedicated Git repository** from the dbt project for better separation of concerns and security. If the dbt project were run using **dbt Core (CLI)**, I would replace the `DbtCloudRunJobOperator` with a generic **`BashOperator`** or a specialized provider (like `dbt-common`) to run commands like `dbt run --target prod`.
+
+### DAG Flow and Logic
+
+The DAG implements the essential **"Test Then Deploy"** pipeline methodology, ensuring data quality is always verified before production tables are updated.
+
+1.  **Ingest Raw Export (`ingest_raw_export`):**
+    * **Action:** This task simulates the initial **Extract and Load (E&L)** step—a separate service (like Fivetran or a custom loader) dumping the latest semi-structured booking data into the raw BigQuery schema.
+    * **Operator:** Uses a simple `BashOperator` as a mock.
+
+2.  **Run Staging, Intermediate & Test (`run_staging_build_and_test`):**
+    * **Action:** Triggers the first dbt Cloud Job. This job is configured to run all transformations up through the Marts layer and execute **all data quality checks (`dbt test`)**.
+    * **Failure Logic:** This task is the **Data Quality Gate**. If any model or test fails, the pipeline stops immediately.
+
+3.  **Promote to Production (`run_prod_deploy`):**
+    * **Action:** Triggers the final dbt Cloud Job, configured to run **only the Marts** layer models (`dbt run --target production`).
+    * **Dependency:** Uses `trigger_rule="all_success"`. This task **only runs if Step 2 successfully passed every data quality check.**
+
+4.  **Notifications (`default_args` / `notify_success`):**
+    * **Scheduling:** The DAG runs **daily** at 6 AM UTC (`schedule_interval="0 6 * * *"`).
+    * **Failure:** `email_on_failure=True` in `default_args` ensures immediate alerts are sent to the data team if any test or task fails.
+    * **Retries:** The pipeline is configured with **2 retries** and a **5-minute delay** to gracefully handle transient cloud or network errors.
+
+---
 
 ---
 
