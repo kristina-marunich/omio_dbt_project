@@ -64,7 +64,7 @@ Our testing strategy covers the entire data lifecycle, recognizing that each dbt
 
 | Layer | When to Test | Test Focus | Implementation |
 | :--- | :--- | :--- | :--- |
-| Pre-Transform (Staging) | Immediately upon ingestion. | Initial Validity & Cleansing: We run quick checks to ensure type conformance and basic validity (e.g., price $\ge 0$). Goal is to fail fast. | YAML (`accepted_values`) or `tests//` SQL files. |
+| Pre-Transform (Staging) | Immediately upon ingestion. | Initial Validity & Cleansing: We run quick checks to ensure type conformance and basic validity (e.g., price $\ge 0$). Goal is to fail fast. | YAML (`accepted_values`)  |
 | Post-Transform (Marts) | After all joins and aggregations are complete. | Final Integrity & Business Logic: We confirm structural integrity (PKs, FKs) and run complex anomaly checks. | YAML (`unique`, `relationships`) and `tests//` SQL files. |
 
 ---
