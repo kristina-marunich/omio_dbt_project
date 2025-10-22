@@ -1,4 +1,4 @@
-[bookings_raw_json.csv](https://github.com/user-attachments/files/23052835/bookings_raw_json.csv)# Omio Bookings Data Pipeline: Complete Walkthrough
+# Omio Bookings Data Pipeline: Complete Walkthrough
 
 Hey team, here is the complete summary of the bookings data project. We built a robust Star Schema to transform the nested daily export into reliable, analyst-ready data.
 
