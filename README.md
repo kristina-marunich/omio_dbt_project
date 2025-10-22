@@ -1,4 +1,4 @@
-# Omio Bookings Data Pipeline: Complete Walkthrough
+# Omio Bookings Data Pipeline: Project Description
 
 Hey team, here is the complete summary of the bookings data project. We built a robust Star Schema to transform the nested daily export into reliable, analyst-ready data.
 
