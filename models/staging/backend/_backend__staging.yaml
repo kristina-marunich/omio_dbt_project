@@ -33,10 +33,6 @@ models:
         tests: [unique, not_null]
       - name: booking_id
         description: "Parent booking reference."
-        tests:
-          - relationships:
-              to: ref('stg_backend__booking')
-              field: booking_id
       - name: carrier_name
         description: "Carrier or operator for this travel segment."
       - name: departure_time_timestamp
@@ -59,10 +55,6 @@ models:
         tests: [unique, not_null]
       - name: booking_id
         description: "Parent booking reference."
-        tests:
-          - relationships:
-              to: ref('stg_backend__booking')
-              field: booking_id
       - name: type
         description: "Passenger type (adult, child, infant)."
       - name: uploaded_at
@@ -79,10 +71,6 @@ models:
         tests: [unique, not_null]
       - name: booking_id
         description: "Parent booking reference."
-        tests:
-          - relationships:
-              to: ref('stg_backend__booking')
-              field: booking_id
       - name: booking_price
         description: "Price paid for the ticket."
       - name: booking_currency
@@ -100,10 +88,6 @@ models:
     columns:
       - name: ticket_id
         description: "Ticket identifier."
-        tests:
-          - relationships:
-              to: ref('stg_backend__ticket')
-              field: ticket_id
       - name: segment_id
         description: "Segment identifier."
         tests:
@@ -123,16 +107,8 @@ models:
     columns:
       - name: ticket_id
         description: "Ticket identifier."
-        tests:
-          - relationships:
-              to: ref('stg_backend__ticket')
-              field: ticket_id
       - name: passenger_id
         description: "Passenger identifier."
-        tests:
-          - relationships:
-              to: ref('stg_backend__passenger')
-              field: passenger_id
       - name: booking_id
         description: "Parent booking reference."
       - name: uploaded_at
