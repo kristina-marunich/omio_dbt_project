@@ -64,8 +64,8 @@ Our testing strategy covers the entire data lifecycle, recognizing that each dbt
 
 | Layer | When to Test | Test Focus | Implementation |
 | :--- | :--- | :--- | :--- |
-| Pre-Transform (Staging) | Immediately upon ingestion. | Initial Validity & Cleansing: We run quick checks to ensure type conformance and basic validity (e.g., price $\ge 0$). Goal is to fail fast. | YAML (`accepted_values`) or `tests/singular/` SQL files. |
-| Post-Transform (Marts) | After all joins and aggregations are complete. | Final Integrity & Business Logic: We confirm structural integrity (PKs, FKs) and run complex anomaly checks. | YAML (`unique`, `relationships`) and `tests/singular/` SQL files. |
+| Pre-Transform (Staging) | Immediately upon ingestion. | Initial Validity & Cleansing: We run quick checks to ensure type conformance and basic validity (e.g., price $\ge 0$). Goal is to fail fast. | YAML (`accepted_values`) or `tests//` SQL files. |
+| Post-Transform (Marts) | After all joins and aggregations are complete. | Final Integrity & Business Logic: We confirm structural integrity (PKs, FKs) and run complex anomaly checks. | YAML (`unique`, `relationships`) and `tests//` SQL files. |
 
 ---
 
@@ -76,7 +76,7 @@ Our testing strategy covers the entire data lifecycle, recognizing that each dbt
 The core difference lies in the purpose and origin of the requirement:
 
 * Technical tests check the quiality and schema constraints. They ensure the pipeline worked correctly. *Example:* Ensuring `ticket_id` is always unique (defined in YAML).
-* Business tests check the data logic and enforce domain rules. They validate that the data makes sense based on real-world constraints. *Example:* "Every booking has $\ge 1$ passenger" (defined in a custom SQL file in `tests/singular/`).
+* Business tests check the data logic and enforce domain rules. They validate that the data makes sense based on real-world constraints. *Example:* "Every booking has $\ge 1$ passenger" (defined in a custom SQL file in `tests//`).
 
 #### How to test for seasonality anomalies like Train strikes?
 
@@ -96,9 +96,6 @@ Anomalies caused by external factors require sophisticated time-aware comparison
 
 ---
 
-## 4. Pipeline Orchestration (Airflow)
-
-The pipeline is scheduled daily and built to be resilient, using the "Test and then Build" methodology.
 
 ## 4. Pipeline Orchestration Walkthrough (Airflow)
 
@@ -106,30 +103,30 @@ This section explains the provided Airflow DAG, which orchestrates the daily pro
 
 ### Orchestration Context
 
-This DAG is configured to work specifically with **dbt Cloud**, utilizing the `DbtCloudRunJobOperator`. This approach is common in production because dbt Cloud handles the compute and environment management, letting Airflow focus purely on scheduling and dependency management.
+This DAG is configured to work specifically with dbt Cloud, utilizing the `DbtCloudRunJobOperator`. This approach is common in production because dbt Cloud handles the compute and environment management, letting Airflow focus purely on scheduling and dependency management.
 
-**Note:** This DAG file is included here as an example of my approach. In a true production environment, the Airflow DAG files would reside in a **separate, dedicated Git repository** from the dbt project for better separation of concerns and security. If the dbt project were run using **dbt Core (CLI)**, I would replace the `DbtCloudRunJobOperator` with a generic **`BashOperator`** or a specialized provider (like `dbt-common`) to run commands like `dbt run --target prod`.
+Note: This DAG file is included here as an example of my approach. In a true production environment, the Airflow DAG files would reside in a separate, dedicated Git repository from the dbt project for better separation of concerns and security. If the dbt project were run using dbt Core (CLI), I would replace the `DbtCloudRunJobOperator` with a generic `BashOperator` or a specialized provider (like `dbt-common`) to run commands like `dbt run --target prod`.
 
 ### DAG Flow and Logic
 
-The DAG implements the essential **"Test Then Deploy"** pipeline methodology, ensuring data quality is always verified before production tables are updated.
+The DAG implements the essential "Test Then Deploy" pipeline methodology, ensuring data quality is always verified before production tables are updated.
 
-1.  **Ingest Raw Export (`ingest_raw_export`):**
-    * **Action:** This task simulates the initial **Extract and Load (E&L)** step—a separate service (like Fivetran or a custom loader) dumping the latest semi-structured booking data into the raw BigQuery schema.
-    * **Operator:** Uses a simple `BashOperator` as a mock.
+1.  Ingest Raw Export (`ingest_raw_export`):
+    * Action: This task simulates the initial Extract and Load (E&L) step—a separate service (like Fivetran or a custom loader) dumping the latest semi-structured booking data into the raw BigQuery schema.
+    * Operator: Uses a simple `BashOperator` as a mock.
 
-2.  **Run Staging, Intermediate & Test (`run_staging_build_and_test`):**
-    * **Action:** Triggers the first dbt Cloud Job. This job is configured to run all transformations up through the Marts layer and execute **all data quality checks (`dbt test`)**.
-    * **Failure Logic:** This task is the **Data Quality Gate**. If any model or test fails, the pipeline stops immediately.
+2.  Run Staging, Intermediate & Test (`run_staging_build_and_test`):
+    * Action: Triggers the first dbt Cloud Job. This job is configured to run all transformations up through the Marts layer and execute all data quality checks (`dbt test`).
+    * Failure Logic: This task is the Data Quality Gate. If any model or test fails, the pipeline stops immediately.
 
-3.  **Promote to Production (`run_prod_deploy`):**
-    * **Action:** Triggers the final dbt Cloud Job, configured to run **only the Marts** layer models (`dbt run --target production`).
-    * **Dependency:** Uses `trigger_rule="all_success"`. This task **only runs if Step 2 successfully passed every data quality check.**
+3.  Promote to Production (`run_prod_deploy`):
+    * Action: Triggers the final dbt Cloud Job, configured to run only the Marts layer models (`dbt run --target production`).
+    * Dependency: Uses `trigger_rule="all_success"`. This task only runs if Step 2 successfully passed every data quality check.
 
-4.  **Notifications (`default_args` / `notify_success`):**
-    * **Scheduling:** The DAG runs **daily** at 6 AM UTC (`schedule_interval="0 6 * * *"`).
-    * **Failure:** `email_on_failure=True` in `default_args` ensures immediate alerts are sent to the data team if any test or task fails.
-    * **Retries:** The pipeline is configured with **2 retries** and a **5-minute delay** to gracefully handle transient cloud or network errors.
+4.  Notifications (`default_args` / `notify_success`):
+    * Scheduling: The DAG runs daily at 6 AM UTC (`schedule_interval="0 6 * * *"`).
+    * Failure: `email_on_failure=True` in `default_args` ensures immediate alerts are sent to the data team if any test or task fails.
+    * Retries: The pipeline is configured with 2 retries and a 5-minute delay to gracefully handle transient cloud or network errors.
 
 ---
 
@@ -137,19 +134,6 @@ The DAG implements the essential **"Test Then Deploy"** pipeline methodology, en
 
 ## 5. Stakeholder Communication (One-Pager for PMs)
 
-TO: Product Managers & Business Leads
-FROM: Analytics Engineering
-DATE: October 2025
 
-### New Data Source: Reliable Booking Transaction Data
-
-This new system converts our complex daily booking exports into clear, analytical tables, ensuring we are all looking at one source of truth for revenue and customer metrics.
-
-| What's New? | What does it fix? | How to use it? |
-| :--- | :--- | :--- |
-| Normalized Revenue (EUR) | Currency fluctuations are neutralized. All revenue metrics (`ticket_price_eur`) are automatically converted to a single base currency (EUR) at the time of transaction. | All revenue metrics are reliable for YOY comparisons. |
-| Master ID Tracking | We can track the same person (`Master Passenger ID`) across multiple orders. | You can accurately measure Average Bookings per User and analyze customer lifetime value. |
-| Data Quality Assurance | Unexpected errors (missing data, price spikes) are caught *before* they hit your dashboard. | If you see a major dip in the ticket volume metric, trust that the pipeline flagged a problem, and the team is already investigating. |
-
-### Core Data KPIs to Monitor (Bonus)
+[Booking Reporting Overview.docx](https://github.com/user-attachments/files/23052723/Booking.Reporting.Overview.docx)
 
