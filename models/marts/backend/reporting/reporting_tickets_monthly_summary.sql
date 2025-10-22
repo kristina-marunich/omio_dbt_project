@@ -1,97 +1,126 @@
--- models/marts/reporting/agg_monthly_executive_summary_replicated.sql
-{{ config(materialized='table') }}
 
-WITH booking_ticket_base AS (
-    -- 1. Calculate Ticket Counts and Revenue directly from the Fact table (Correct Grain)
-    SELECT
-        f.booking_id,
-        d.year_month_id,
-        SUM(f.ticket_price_eur) AS total_booking_price, 
-        COUNT(f.ticket_id) AS total_tickets
-        
-    FROM {{ ref('fact_ticket_transaction') }} f
-    INNER JOIN {{ ref('dim_date') }} d ON f.ticket_issue_date_id = d.date_id
-    GROUP BY 1, 2
-),
+{{ config(materialized="table") }}
 
-booking_passenger_base AS (
-    -- 2. Calculate unique MASTER passengers per booking (using the Bridge)
-    SELECT
-        f.booking_id,
-        COUNT(DISTINCT btp.passenger_id) AS total_passengers
-        
-    FROM {{ ref('fact_ticket_transaction') }} f
-    INNER JOIN {{ ref('bridge_ticket_passenger') }} btp ON f.ticket_id = btp.ticket_id
-    GROUP BY 1
-),
+with
+    booking_ticket_base as (
+        -- 1. Calculate Ticket Counts and Revenue directly from the Fact table
+        -- (Correct Grain)
+        select
+            f.booking_id,
+            d.year_month_id,
+            sum(f.ticket_price_eur) as total_booking_price,
+            count(f.ticket_id) as total_tickets
 
-monthly_booking_base AS (
-    -- 3. Combine Ticket and Passenger metrics at the booking level
-    SELECT
-        t.year_month_id,
-        t.booking_id,
-        t.total_booking_price,
-        t.total_tickets,
-        COALESCE(p.total_passengers, 0) AS total_passengers
-        
-    FROM booking_ticket_base t
-    LEFT JOIN booking_passenger_base p ON t.booking_id = p.booking_id
-),
+        from {{ ref("fact_ticket_transaction") }} f
+        inner join {{ ref("dim_date") }} d on f.ticket_issue_date_id = d.date_id
+        group by 1, 2
+    ),
 
-booking_metrics AS (
-    -- 4. Calculate final monthly aggregates
-    SELECT
-        year_month_id,
-        COUNT(DISTINCT booking_id) AS total_bookings,
-        SUM(total_booking_price) AS total_revenue_eur,
-        SUM(total_tickets) AS total_tickets,
-        SUM(total_passengers) AS total_passengers,
-        
-        AVG(total_tickets) AS avg_tickets_per_booking,
-        AVG(total_passengers) AS avg_passengers_per_booking,
-        SAFE_DIVIDE(SUM(total_booking_price), COUNT(DISTINCT booking_id)) AS avg_booking_value_eur,
-        
-        SUM(total_booking_price) AS total_ticket_revenue_eur,
-        SAFE_DIVIDE(SUM(total_booking_price), SUM(total_tickets)) AS avg_ticket_price_eur
-        
-    FROM monthly_booking_base
-    GROUP BY 1
-),
+    booking_passenger_base as (
+        -- 2. Calculate unique MASTER passengers per booking (using the Bridge)
+        select f.booking_id, count(distinct btp.passenger_id) as total_passengers
 
-monthly_segment_metrics AS (
-    -- 5. Calculate unique segments (remains correct as it uses DISTINCT on the Bridge)
-    SELECT
-        d.year_month_id,
-        COUNT(DISTINCT bs.segment_id) AS unique_segments
-    FROM {{ ref('bridge_ticket_segment') }} bs
-    INNER JOIN {{ ref('fact_ticket_transaction') }} f ON bs.ticket_id = f.ticket_id
-    INNER JOIN {{ ref('dim_date') }} d ON f.ticket_issue_date_id = d.date_id
-    GROUP BY 1
-),
+        from {{ ref("fact_ticket_transaction") }} f
+        inner join
+            {{ ref("bridge_ticket_passenger") }} btp on f.ticket_id = btp.ticket_id
+        group by 1
+    ),
 
-monthly_passenger_metrics AS (
-    -- 6. Calculate total unique passengers in the month
-    SELECT
-        d.year_month_id,
-        COUNT(DISTINCT btp.passenger_id) AS unique_passengers
-    FROM {{ ref('bridge_ticket_passenger') }} btp
-    INNER JOIN {{ ref('fact_ticket_transaction') }} f ON btp.ticket_id = f.ticket_id
-    INNER JOIN {{ ref('dim_date') }} d ON f.ticket_issue_date_id = d.date_id
-    GROUP BY 1
-),
+    monthly_booking_base as (
+        -- 3. Combine Ticket and Passenger metrics at the booking level
+        select
+            t.year_month_id,
+            t.booking_id,
+            t.total_booking_price,
+            t.total_tickets,
+            coalesce(p.total_passengers, 0) as total_passengers
 
-ratios AS (
-    -- 7. Calculate ratios
-    SELECT
-        b.year_month_id,
-        SAFE_DIVIDE(b.total_bookings, p.unique_passengers) AS avg_bookings_per_passenger,
-        SAFE_DIVIDE(s.unique_segments, b.total_bookings) AS avg_segments_per_booking
-    FROM booking_metrics b
-    LEFT JOIN monthly_passenger_metrics p USING (year_month_id)
-    LEFT JOIN monthly_segment_metrics s USING (year_month_id)
-)
+        from booking_ticket_base t
+        left join booking_passenger_base p on t.booking_id = p.booking_id
+    ),
 
-SELECT
+    booking_metrics as (
+        -- 4. Calculate final monthly aggregates
+        select
+            year_month_id,
+            count(distinct booking_id) as total_bookings,
+            sum(total_booking_price) as total_revenue_eur,
+            sum(total_tickets) as total_tickets,
+            sum(total_passengers) as total_passengers,
+
+            avg(total_tickets) as avg_tickets_per_booking,
+            avg(total_passengers) as avg_passengers_per_booking,
+            safe_divide(
+                sum(total_booking_price), count(distinct booking_id)
+            ) as avg_booking_value_eur,
+
+            sum(total_booking_price) as total_ticket_revenue_eur,
+            safe_divide(
+                sum(total_booking_price), sum(total_tickets)
+            ) as avg_ticket_price_eur
+
+        from monthly_booking_base
+        group by 1
+    ),
+
+    monthly_segment_metrics as (
+        -- 5. Calculate unique segments (remains correct as it uses DISTINCT on the
+        -- Bridge)
+        select d.year_month_id, count(distinct bs.segment_id) as unique_segments
+        from {{ ref("bridge_ticket_segment") }} bs
+        inner join {{ ref("fact_ticket_transaction") }} f on bs.ticket_id = f.ticket_id
+        inner join {{ ref("dim_date") }} d on f.ticket_issue_date_id = d.date_id
+        group by 1
+    ),
+
+    monthly_passenger_metrics as (
+        -- 6. Calculate total unique passengers in the month
+        select d.year_month_id, count(distinct btp.passenger_id) as unique_passengers
+        from {{ ref("bridge_ticket_passenger") }} btp
+        inner join {{ ref("fact_ticket_transaction") }} f on btp.ticket_id = f.ticket_id
+        inner join {{ ref("dim_date") }} d on f.ticket_issue_date_id = d.date_id
+        group by 1
+    ),
+
+    ratios as (
+        -- 7. Calculate ratios
+        select
+            b.year_month_id,
+            safe_divide(
+                b.total_bookings, p.unique_passengers
+            ) as avg_bookings_per_passenger,
+            safe_divide(s.unique_segments, b.total_bookings) as avg_segments_per_booking
+        from booking_metrics b
+        left join monthly_passenger_metrics p using (year_month_id)
+        left join monthly_segment_metrics s using (year_month_id)
+    ),
+
+    monthly_passenger_type_metrics as (
+        select
+            d.year_month_id,
+            dp.passenger_type,
+            avg(f.ticket_price_eur) as avg_price_by_type
+        from {{ ref("fact_ticket_transaction") }} f
+        inner join
+            {{ ref("bridge_ticket_passenger") }} btp on f.ticket_id = btp.ticket_id
+        inner join {{ ref("dim_passenger") }} dp on btp.passenger_id = dp.passenger_id  -- Uses dim_passenger
+        inner join {{ ref("dim_date") }} d on f.ticket_issue_date_id = d.date_id
+        group by 1, 2
+    ),
+
+    -- You would need to PIVOT this data if you want it all on one row for the final
+    -- agg table.
+    -- For simplicity, we'll calculate the overall monthly average adult price as one
+    -- metric.
+    monthly_avg_adult_price as (
+        select year_month_id, avg_price_by_type as avg_adult_ticket_price_eur
+        from monthly_passenger_type_metrics
+        where passenger_type = 'adult'
+    -- Note: If multiple tickets are linked to one passenger, the AVG is inflated. 
+    -- A true metric would average the unique booking's portion of the ticket price.
+    )
+
+select
     b.year_month_id,
     b.total_bookings,
     b.total_revenue_eur,
@@ -100,20 +129,20 @@ SELECT
     b.avg_booking_value_eur,
     b.avg_tickets_per_booking,
     b.avg_passengers_per_booking,
-    
-    b.total_tickets AS total_tickets_unique,
+
+    b.total_tickets as total_tickets_unique,
     b.avg_ticket_price_eur,
     b.total_ticket_revenue_eur,
-    
+
     p.unique_passengers,
     s.unique_segments,
-    
-    r.avg_bookings_per_passenger,
-    r.avg_segments_per_booking
-    
-FROM booking_metrics b
-LEFT JOIN monthly_passenger_metrics p USING (year_month_id)
-LEFT JOIN monthly_segment_metrics s USING (year_month_id)
-LEFT JOIN ratios r USING (year_month_id)
 
-ORDER BY b.year_month_id
+    r.avg_bookings_per_passenger,
+    r.avg_segments_per_booking,
+    aa.avg_adult_ticket_price_eur
+
+from booking_metrics b
+left join monthly_passenger_metrics p using (year_month_id)
+left join monthly_segment_metrics s using (year_month_id)
+left join ratios r using (year_month_id)
+left join monthly_avg_adult_price aa using (year_month_id)
