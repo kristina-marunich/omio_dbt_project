@@ -1,10 +1,10 @@
-# mio Bookings Data Pipeline: Complete Walkthrough
+# Omio Bookings Data Pipeline: Complete Walkthrough
 
 Hey team, here is the complete summary of the bookings data project. We built a robust **Star Schema** to transform the nested daily export into reliable, analyst-ready data.
 
 ## 1. Project Architecture and Setup
 
-I implemented a comprehensive ELT (Extract, Load, Transform) pipeline centered on dbt for the entire workflow.
+I implemented a comprehensive transformation pipeline centered on dbt for the entire workflow.
 
 ### Project Steps Taken
 
@@ -17,9 +17,12 @@ I implemented a comprehensive ELT (Extract, Load, Transform) pipeline centered o
 
 | Diagram | Placement | Purpose |
 | :--- | :--- | :--- |
-| **Initial ERD of Raw Data** | *(Insert initial 6-table relational schema screenshot here)* | Shows the complexity of the 6 intertwined raw tables before transformation. |
-| **Star Schema of Core Marts** | *(Insert final Star Schema diagram screenshot here)* | Illustrates the final, simplified analytical structure with the central Fact and surrounding Dimensions/Bridges. |
-| **Lineage from Raw to Reporting** | *(Insert dbt lineage graph screenshot here)* | Provides the end-to-end lineage, showing how raw columns flow through Staging, Intermediate, and Marts to become final KPIs. |
+| **Initial ERD of Raw Data** | *<img width="476" height="663" alt="image" src="https://github.com/user-attachments/assets/12d4139a-4a46-43d6-9d75-44c21003853d" />
+* | Shows the complexity of the 6 intertwined raw tables before transformation. |
+| **Star Schema of Core Marts** | *<img width="890" height="442" alt="image" src="https://github.com/user-attachments/assets/ef8f48c1-5033-4486-84aa-dcb929565378" />
+* | Illustrates the final, simplified analytical structure with the central Fact and surrounding Dimensions/Bridges. |
+| **Lineage from Raw to Reporting** | *<img width="1349" height="601" alt="image" src="https://github.com/user-attachments/assets/8a85b2a7-e0b6-464e-a281-04c1ccbe995a" />
+* | Provides the end-to-end lineage, showing how raw columns flow through Staging, Intermediate, and Marts to become final KPIs. |
 
 ---
 
