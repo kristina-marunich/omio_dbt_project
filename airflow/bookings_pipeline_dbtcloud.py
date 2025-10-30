@@ -38,7 +38,6 @@ with DAG(
     run_staging_build_and_test = DbtCloudRunJobOperator(
         task_id="run_staging_build_and_test",
         dbt_cloud_conn_id="dbt_cloud_default",
-        # NOTE: Replace with your actual dbt Cloud Job ID for staging/testing
         job_id=12345,
         check_interval=60,
         timeout=3600,
@@ -51,7 +50,6 @@ with DAG(
     run_prod_deploy = DbtCloudRunJobOperator(
         task_id="run_prod_deploy",
         dbt_cloud_conn_id="dbt_cloud_default",
-        # NOTE: Replace with your actual dbt Cloud Job ID for production deployment
         job_id=67890,
         check_interval=60,
         timeout=3600,
