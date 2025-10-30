@@ -1,36 +1,37 @@
 -- models/marts/core/fact_ticket_transaction.sql
-{{
+{{ 
     config(
-        materialized="incremental",
-        unique_key="ticket_id",
-        incremental_strategy="merge",
-        on_schema_change="fail",
+        materialized = "incremental",
+        incremental_strategy = "insert_overwrite",
+        partition_by = {
+            "field": "uploaded_at_date",  
+            "data_type": "date"
+        },
+        cluster_by = ["booking_id"],      
+        on_schema_change = "fail"
     )
 }}
 
-
-select
-    ticket_id,  -- PK: Ticket ID
-    booking_id,  -- FK: Booking ID
-    ticket_issue_date_id,  -- FK: Date ID
-
-    -- Measures
-    ticket_price_eur,
-    ticket_price as ticket_price_original,
-    eur_rate,
-
-    -- Contextual Dimensions
-    ticket_currency,
-    uploaded_at_timestamp
-
-from {{ ref("int_ticket_base") }}
+with source as (
+    select
+        ticket_id,  -- PK
+        booking_id,  -- FK
+        date(uploaded_at_timestamp) as uploaded_at_date,
+        ticket_issue_date_id,
+        ticket_price_eur,
+        ticket_price as ticket_price_original,
+        eur_rate,
+        ticket_currency,
+        uploaded_at_timestamp
+    from {{ ref("int_ticket_base") }}
+)
 
 {% if is_incremental() %}
-
-    where
-        uploaded_at_timestamp >= (
-            select timestamp_sub(max(uploaded_at_timestamp), interval 7 day)
-            from {{ this }}
-        )
-
+    -- Only rebuild the partitions that changed (e.g., last 7 days)
+    select *
+    from source
+    where uploaded_at_date >= date_sub(current_date(), interval 7 day)
+{% else %}
+    select *
+    from source
 {% endif %}
