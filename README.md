@@ -49,7 +49,7 @@ We chose the Pure Star Schema centered on the Ticket Transaction for maximum per
 
 ### Snapshots (Slowly Changing Data)
 
-We would implement snapshots on the `stg_backend___booking` model, targeting the `updated_at_timestamp` column using the `check` strategy.
+We would implement snapshots on the `stg_backend___booking` model, targeting the `partner_id` and `user_selected_currency` columns using the `check` strategy.
 
 ---
 
