@@ -4,9 +4,7 @@
         config(
             unique_key="booking_id",
             strategy="check",
-            updated_at="updated_at_timestamp",
-            invalidate_hard_deletes=True,
-            check_cols=["partner_id", "user_selected_currency"],
+            check_cols=["partner_id", "user_selected_currency"]
         )
     }}
 
