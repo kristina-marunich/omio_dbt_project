@@ -42,9 +42,9 @@ We chose the Pure Star Schema centered on the Ticket Transaction for maximum per
 
 | Layer | Materialization | Key Example |
 | :--- | :--- | :--- |
-| Staging (`stg_*`) | View | `stg_backend__booking` (Flattening and cleansing of raw JSON.) |
-| Intermediate (`int_*`) | View | `int_ticket_base` (Calculates EUR Conversion and handles Master ID deduplication.) |
-| Marts: Core (`fact_`, `dim_`, `bridge_`) |  Incremental | `fact_ticket_transaction` (Set to Incremental using `uploaded_at_timestamp` for efficiency.) |
+| Staging (`stg_*`) | Incremental | `stg_backend__booking` (Flattening and cleansing of raw JSON.) Avoids re-parsing JSON daily|
+| Intermediate (`int_*`) | Incremental | `int_ticket_base` (Calculates EUR Conversion and handles Master ID deduplication.) Saves compute on joins|
+| Marts: Core (`fact_`, `dim_`, `bridge_`) |  Incremental | `fact_ticket_transaction` (Set to Incremental using `uploaded_at_timestamp` for efficiency.) Saves compute on joins|
 | Marts: Reporting (`Reporting_`) |  Table | `reporting_tickets_monthly_summary` (Ready for BI data mart) |
 
 ### Snapshots (Slowly Changing Data)
